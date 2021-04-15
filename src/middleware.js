@@ -42,13 +42,15 @@ export default function wrapper(context) {
 
     async function processRequest() {
       const filename = getFilenameFromUrl(context, req.url);
-      let { headers } = context.options;
 
+      const { headers } = context.options;
       if (typeof headers === "function") {
         headers = headers(req, res, context);
       }
 
       let content;
+      let stream;
+      let size;
 
       if (!filename) {
         await goNext();
@@ -56,7 +58,8 @@ export default function wrapper(context) {
       }
 
       try {
-        content = context.outputFileSystem.readFileSync(filename);
+        // eslint-disable-next-line prefer-destructuring
+        size = context.outputFileSystem.lstatSync(filename).size;
       } catch (_ignoreError) {
         await goNext();
         return;
@@ -100,21 +103,30 @@ export default function wrapper(context) {
       }
 
       // Buffer
-      content = handleRangeHeaders(context, content, req, res);
+      const ranges = handleRangeHeaders(context, size, req, res);
 
-      // Express API
-      if (res.send) {
-        res.send(content);
+      try {
+        stream = context.outputFileSystem.createReadStream(
+          filename,
+          ranges
+            ? {
+                start: ranges.start,
+                end: ranges.end,
+              }
+            : {}
+        );
+      } catch (_ignoreError) {
+        await goNext();
+        return;
       }
       // Node.js API
-      else {
-        res.setHeader("Content-Length", content.length);
+      res.setHeader("Content-Length", size);
 
-        if (req.method === "HEAD") {
-          res.end();
-        } else {
-          res.end(content);
-        }
+      if (req.method === "HEAD") {
+        res.end();
+      } else {
+        stream.on("end", () => res.end());
+        stream.pipe(res);
       }
     }
   };
