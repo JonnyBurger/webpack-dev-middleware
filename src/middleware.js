@@ -122,7 +122,7 @@ export default function wrapper(context) {
 
       res.setHeader(
         "Content-Length",
-        ranges ? ranges.end - ranges.start : size
+        ranges ? ranges.end - ranges.start + 1 : size
       );
 
       if (req.method === "HEAD") {
