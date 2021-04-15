@@ -128,7 +128,6 @@ export default function wrapper(context) {
       if (req.method === "HEAD") {
         res.end();
       } else {
-        stream.on("end", () => res.end());
         stream.pipe(res);
       }
     }
