@@ -119,8 +119,11 @@ export default function wrapper(context) {
         await goNext();
         return;
       }
-      // Node.js API
-      res.setHeader("Content-Length", size);
+
+      res.setHeader(
+        "Content-Length",
+        ranges ? ranges.end - ranges.start : size
+      );
 
       if (req.method === "HEAD") {
         res.end();
